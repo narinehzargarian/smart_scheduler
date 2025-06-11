@@ -1,0 +1,21 @@
+# Byte-compiled files
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# SQLite DB
+*.sqlite3
+
+#Django medis/ uploaded files
+media/
+
+# IDE/editor dirs
+.idea/
+.vscode/
+*.sublime-*
