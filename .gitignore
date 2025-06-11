@@ -19,3 +19,6 @@ media/
 .idea/
 .vscode/
 *.sublime-*
+
+# MacOS
+.DS_Store
