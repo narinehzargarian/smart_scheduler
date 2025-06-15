@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import RegisterSerializer
@@ -16,8 +17,12 @@ class SignUpView(APIView):
          serializer.save()
          return Response({'detail': 'User created successfully'}, status=status.HTTP_201_CREATED)
       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+   
+# class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+#    username_field = 'email'
 
 class CookieTokenObtainPairView(TokenObtainPairView):
+  #  serializer_class = EmailTokenObtainPairSerializer
    
    def post(self, request, *args, **kwargs):
       original_response = super().post(request, *args, **kwargs)
@@ -37,9 +42,13 @@ class CookieTokenObtainPairView(TokenObtainPairView):
              samesite='Lax'  # Adjust as needed
          )
       # Retrun the response
-      return Response({
-         'access': access,
-      }, status=original_response.status_code)
+      # return Response({
+      #    'access': access,
+      # }, status=original_response.status_code)
+      original_response.data = {
+         'access': access
+      }
+      return original_response
 
   #  def finalize_response(self, request, response, *args, **kwargs):
   #     # Get the refresh token
