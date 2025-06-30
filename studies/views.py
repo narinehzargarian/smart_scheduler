@@ -4,6 +4,7 @@ from .models import Course, Task
 from .serializers import CourseSerializer, TaskSerializer
 
 class CourseViewSet(viewsets.ModelViewSet):
+    print('in the course viewSet')
     serializer_class = CourseSerializer
     permission_classes = [permissions.IsAuthenticated]
 

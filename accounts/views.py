@@ -3,9 +3,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import status, permissions, generics
+from .serializers import RegisterSerializer
 from .serializers import RegisterSerializer
 from django.conf import settings
+from django.contrib.auth import get_user_model
+
+user = get_user_model()
 
 class SignUpView(APIView):
    permission_classes = [] # Allow any user to register
@@ -17,9 +22,15 @@ class SignUpView(APIView):
          serializer.save()
          return Response({'detail': 'User created successfully'}, status=status.HTTP_201_CREATED)
       return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-   
-# class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-#    username_field = 'email'
+
+# GET /api/auth/user/ -> returns the current user data
+class CurrentUserView(generics.RetrieveAPIView):
+  serializer_class = RegisterSerializer
+  permission_classes = [permissions.IsAuthenticated]
+
+  def get_object(self):
+     print(self.request.user)
+     return self.request.user
 
 class CookieTokenObtainPairView(TokenObtainPairView):
   #  serializer_class = EmailTokenObtainPairSerializer
@@ -66,4 +77,34 @@ class CookieTokenObtainPairView(TokenObtainPairView):
   #         # Remove the refresh token from the response data
   #         del response.data['refresh']
   #     return super().finalize_response(request, response, *args, **kwargs)
-   
+
+class LogoutView(APIView):
+  permission_classes = [permissions.IsAuthenticated]
+  
+  def post(self, request):
+    raw_token = request.COOKIES.get('refresh_token')
+
+    if not raw_token:
+       return Response({'detail': 'No refresh token found'}, 
+                       status=status.HTTP_400_BAD_REQUEST
+                      )
+
+    try:
+       token = RefreshToken(raw_token)
+       token.blacklist()
+    except Exception:
+       return Response({'detail': 'Invalid token'}, 
+                       status=status.HTTP_400_BAD_REQUEST
+                      )
+
+    resp = Response(status=status.HTTP_204_NO_CONTENT)
+    resp.delete_cookie('refresh_token')
+    return resp
+
+class UserDeleteView(APIView):
+   permission_classes = [permissions.IsAuthenticated]
+
+   def delete(self, request):
+      user = request.user
+      user.delete()
+      return Response(status=status.HTTP_204_NO_CONTENT)
