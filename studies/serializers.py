@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Course, Task
 from django.db.models import Q
@@ -48,6 +49,9 @@ class CourseSerializer(serializers.ModelSerializer):
 
     if overlap:
       warnings.warn('Course time overlaps with existing course.')
+      raise serializers.ValidationError(
+        'Course time overlaps with an existing course.'
+      )
 
     return attrs
     
@@ -71,13 +75,23 @@ class TaskSerializer(serializers.ModelSerializer):
     allow_null=True,
     input_formats=[
       '%Y-%m-%d', # Date only
-      '%Y-%m-%dT%H%M', # e.g. "2025-06-17T14:30"
+      '%Y-%m-%dT%H:%M', # e.g. "2025-06-17T14:30"
       '%Y-%m-%d %H:%M', # e.g. "2025-06-17 14:30"
       '%Y-%m-%dT%I:%M %p', # e.g "2025-06-17T2:30 PM"
       '%Y-%m-%d %I:%M %p',  # e.g. "2025-06-17 2:30 PM"
     ],
     help_text='YYYY-MM-DD or with time "YYYY-MM-DDTHH:MM" "YYYY-MM-DD HH:MM AM/PM" omit/null for no due date'
   )
+  
+  def validate(self, attrs):
+    # Ensure due-date is not in the past
+    due = attrs.get('due_date')
+    if due and due < timezone.now():
+      raise serializers.ValidationError({
+        'due_date': 'Due date cannot be in the past.'
+      })
+    return attrs
+
   class Meta:
     model = Task
     fields = [
