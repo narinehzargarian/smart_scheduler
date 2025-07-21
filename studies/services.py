@@ -1,7 +1,11 @@
 from datetime import datetime, timedelta
+from django.utils import timezone
+# import pytz
 from .utils import get_availability
 from .algorithms import rule_based_scheduler
 from .models import Task, ScheduledTask
+
+# pt = pytz.timezone('America/Los_Angeles')
 
 def generate_schedule(user):
   availability = get_availability(user)
@@ -28,6 +32,11 @@ def generate_schedule(user):
     for date_str, hour in blocks:
       start = datetime.fromisoformat(date_str) + timedelta(hours=hour)
       end = start + timedelta(hours=1)
+
+      # Make the start and end times timezone aware
+      start = timezone.make_aware(start)
+      end = timezone.make_aware(end)
+
       ScheduledTask.objects.create(
         task=t,
         start_datetime=start,

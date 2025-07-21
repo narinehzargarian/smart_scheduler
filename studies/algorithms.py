@@ -60,6 +60,5 @@ def rule_based_scheduler(availibility, tasks):
   return schedule
 
 
-sd = rule_based_scheduler(availability, tasks)
-
-print(sd)
+# sd = rule_based_scheduler(availability, tasks)
+# print(sd)
