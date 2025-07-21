@@ -46,7 +46,6 @@ INSTALLED_APPS = [
 
     # Custom apps
     'accounts', 
-    'scheduler',
     'studies', 
 
 ]

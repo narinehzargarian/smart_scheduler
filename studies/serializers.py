@@ -71,16 +71,17 @@ class CourseSerializer(serializers.ModelSerializer):
 
 class TaskSerializer(serializers.ModelSerializer):
   due_date = serializers.DateTimeField(
-    required=False,
-    allow_null=True,
+    required=True,
+    allow_null=False,
     input_formats=[
-      '%Y-%m-%d', # Date only
-      '%Y-%m-%dT%H:%M', # e.g. "2025-06-17T14:30"
-      '%Y-%m-%d %H:%M', # e.g. "2025-06-17 14:30"
-      '%Y-%m-%dT%I:%M %p', # e.g "2025-06-17T2:30 PM"
+      # '%Y-%m-%d', # Date only
+      # '%Y-%m-%dT%H:%M', # e.g. "2025-06-17T14:30"
+      # '%Y-%m-%d %H:%M', # e.g. "2025-06-17 14:30"
+      # '%Y-%m-%dT%I:%M %p', # e.g "2025-06-17T2:30 PM"
+
       '%Y-%m-%d %I:%M %p',  # e.g. "2025-06-17 2:30 PM"
     ],
-    help_text='YYYY-MM-DD or with time "YYYY-MM-DDTHH:MM" "YYYY-MM-DD HH:MM AM/PM" omit/null for no due date'
+    help_text='Format: YYYY-MM-DD HH:MM AM/PM (e.g. "2025-08-19 5:00 PM")'
   )
   
   def validate(self, attrs):

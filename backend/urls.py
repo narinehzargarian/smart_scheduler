@@ -21,5 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),  # JWT login/refresh
     path('api/studies/', include('studies.urls')),  # courses, tasks, etc.
-    path('api/plan/', include('scheduler.urls')),  # generate plan
+    # path('api/plan/', include('scheduler.urls')),  # generate plan
 ]
