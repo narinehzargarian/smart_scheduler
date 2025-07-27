@@ -1,6 +1,13 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib.postgres.fields import ArrayField
+from django.utils import timezone
+from datetime import date
+
+def default_end_date():
+    today = timezone.localdate()
+    return date(today.year, 12, 31)
 
 class Course(models.Model):
     DAYS = [
@@ -26,16 +33,25 @@ class Course(models.Model):
     end_time = models.TimeField(help_text='e.g. 10:15 AM')
 
     start_date = models.DateField(
-        blank=True,
-        null=True,
+        # blank=True,
+        # null=True,
+        default=timezone.localdate(),
         help_text='e.g. 2025-09-01')
     end_date = models.DateField(
-        null=True, 
-        blank=True,
+        # null=True, 
+        # blank=True,
+        default=default_end_date(),
         help_text='e.g. 2025-12-15'
     )
     class Meta:
         ordering = ['name']
+    
+    def clean(self):
+        super().clean()
+        if self.end_date < self.start_date:
+            raise ValidationError({
+                'end_date': 'End date cannot be before start date.'
+            })
     
     def __str__(self):
         # day = dict(self.DAYS)[self.days_of_week]

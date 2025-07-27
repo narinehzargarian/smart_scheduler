@@ -1,6 +1,6 @@
 from django.utils import timezone
 from rest_framework import serializers
-from .models import Course, Task
+from .models import Course, Task, ScheduledTask
 from django.db.models import Q
 import warnings
 
@@ -17,14 +17,14 @@ class CourseSerializer(serializers.ModelSerializer):
     help_text='e.g. "9:00 AM" or "9:00"'
   )
   start_date = serializers.DateField(
-    required=False,
-    allow_null=True,
+    # required=False,
+    # allow_null=True,
     input_formats=['%Y-%m-%d'],
     help_text='e.g. "2025-09-01"'
   )
   end_date = serializers.DateField(
-    required=False,
-    allow_null=True,
+    # required=False,
+    # allow_null=True,
     input_formats=['%Y-%m-%d'],
     help_text='e.g. "2025-12-15"'
   )
@@ -32,6 +32,8 @@ class CourseSerializer(serializers.ModelSerializer):
     user = self.context['request'].user
     start_dt = attrs.get('start_time')
     end_time = attrs.get('end_time')
+    start_date = attrs.get('start_date')
+    end_date = attrs.get('end_date')
     days = attrs.get('days_of_week')
 
     # Build a queryset of this user's courses
@@ -52,6 +54,11 @@ class CourseSerializer(serializers.ModelSerializer):
       raise serializers.ValidationError(
         'Course time overlaps with an existing course.'
       )
+    
+    if end_date < start_date:
+      raise serializers.ValidationError({
+        'end_date': 'End date must be on or after start date.'
+      })
 
     return attrs
     
@@ -102,3 +109,18 @@ class TaskSerializer(serializers.ModelSerializer):
       'estimated_duration',
     ]
     read_only_fields = ['id']
+
+class ScheduledTaskSerializer(serializers.ModelSerializer):
+  name = serializers.CharField(source="task.name", read_only=True)
+  class Meta:
+    model = ScheduledTask
+    fields = [
+      'id',
+      'task',
+      'name',
+      'start_datetime',
+      'end_datetime',
+      'assigned_by',
+      'completed'
+    ]
+    read_only_fields = ['assigend_by']

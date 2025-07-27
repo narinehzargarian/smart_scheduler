@@ -2,8 +2,8 @@ from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from .models import Course, Task
-from .serializers import CourseSerializer, TaskSerializer
+from .models import Course, Task, ScheduledTask
+from .serializers import CourseSerializer, TaskSerializer, ScheduledTaskSerializer
 from .services import generate_schedule
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -56,6 +56,13 @@ class TaskViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         return super().create(request, *args, **kwargs)
+
+class ScheduledTaskViewSet(viewsets.ModelViewSet):
+    serializer_class = ScheduledTaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ScheduledTask.objects.filter(task__owner=self.request.user)
     
 
 @api_view(['POST'])

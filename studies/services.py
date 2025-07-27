@@ -8,6 +8,7 @@ from .models import Task, ScheduledTask
 # pt = pytz.timezone('America/Los_Angeles')
 
 def generate_schedule(user):
+  print('Generate schedule has been called!')
   availability = get_availability(user)
   # QuerySet of tasks
   tasks_qs = Task.objects.filter(owner=user, due_date__isnull=False)
