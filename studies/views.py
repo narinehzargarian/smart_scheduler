@@ -83,6 +83,7 @@ class ScheduledTaskViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
         instance = serializer.instance
 
+        # Verify the new scheduled times
         new_start = data.get('start_datetime', instance.start_datetime)
         new_end = data.get('end_datetime', instance.end_datetime)
 
@@ -97,6 +98,8 @@ class ScheduledTaskViewSet(viewsets.ModelViewSet):
             start_datetime__lt=new_end,
             end_datetime__gt=new_start, 
         ).exclude(pk=instance.pk) # Ignore the update
+        if conflicts.exists():
+            raise ValidationError("This time slot conflicts with another scheduled task.")
 
         # Ensure it does not conflict with any courses on that day
         weekday = new_start.weekday()
@@ -106,21 +109,24 @@ class ScheduledTaskViewSet(viewsets.ModelViewSet):
             end_date__gte=new_start.date(),
             days_of_week__contains=[weekday]
         )
-
         for course in courses:
             if (new_start.time() < course.end_time and
                 new_end.time() > course.start_time):
                 raise ValidationError(f'There is a conflict between {course.name} class and updated schedule.')
         
 
-        if conflicts.exists():
-            raise ValidationError("This time slot conflicts with another scheduled task.")
-
         # Save the updated as 'user'
-        serializer.save(assigned_by='user')
+        with transaction.atomic():
+          serializer.save(assigned_by='user')
+          task = instance.task
+          # Mark all the schedules for the same task as 'user'
+          ScheduledTask.objects.filter(task=task).exclude(assigned_by='user').update(assigned_by='user')
 
-        # Mark all the schedules for the same task as 'user'
-        ScheduledTask.objects.filter(task=instance.task).exclude(assigned_by='user').update(assigned_by='user')
+          # Delete the task if all the slots are completed
+          any_incomplete = ScheduledTask.objects.filter(task=task, completed=False).exists()
+          if not any_incomplete:
+            task.delete()
+            generate_schedule(self.request.user)
     
 
 @api_view(['POST'])
