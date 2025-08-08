@@ -126,7 +126,6 @@ class ScheduledTaskViewSet(viewsets.ModelViewSet):
           any_incomplete = ScheduledTask.objects.filter(task=task, completed=False).exists()
           if not any_incomplete:
             task.delete()
-            generate_schedule(self.request.user)
     
 
 @api_view(['POST'])

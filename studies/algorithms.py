@@ -38,7 +38,7 @@ def rule_based_scheduler(calendar, tasks):
       for hour in slots:
         start_local_aware = timezone.make_aware(datetime.combine(day, time(hour)))
         start = timezone.localtime(start_local_aware)
-        print('start of the task is ', start)
+        # print('start of the task is ', start)
         if start < due:
           eligible_slots.append((start, date_str, hour))
     
