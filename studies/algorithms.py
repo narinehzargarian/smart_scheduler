@@ -1,5 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time
+from django.utils import timezone
 from collections import defaultdict
+import math
 
 # Mock tasks
 tasks = [
@@ -16,31 +18,36 @@ availability = {
     "2025-08-20": [9, 10]
 }
 
-def rule_based_scheduler(availibility, tasks):
-  calendar = {date: slots[:] for date, slots in availibility.items()}
+def rule_based_scheduler(calendar, tasks):
+  # calendar = {date: slots[:] for date, slots in availibility.items()}
   schedule = defaultdict(list)
 
   for task in tasks:
-    due_str = task['due_date']
-    due = datetime.strptime(due_str, '%Y-%m-%d %I:%M %p')
-    print(f'parsing {due_str}')
-    time_needed = task['estimated_duration']
-    task_name = task['name']
+    due = timezone.localtime(task.due_date)
+    # due = datetime.strptime(due_str, '%Y-%m-%d %I:%M %p')
+    print(f'parsing {due}')
+    total_hours = task.estimated_duration.total_seconds() / 3600
+    hours_needed = math.ceil(total_hours)
+    # time_needed = task['estimated_duration']
+    # task_name = task['name']
 
     # Gather eligible time slots before deadline
     eligible_slots = []
-    for date, slots in calendar.items():
+    for date_str, slots in calendar.items():
+      day = datetime.fromisoformat(date_str).date()
       for hour in slots:
-        slot_dt = datetime.strptime(date, '%Y-%m-%d') + timedelta(hours=hour)
-        if slot_dt < due:
-          eligible_slots.append((slot_dt, date, hour))
+        start_local_aware = timezone.make_aware(datetime.combine(day, time(hour)))
+        start = timezone.localtime(start_local_aware)
+        print('start of the task is ', start)
+        if start < due:
+          eligible_slots.append((start, date_str, hour))
     
       
     # Partial fallback if not enough slots
-    if len(eligible_slots) < time_needed:
-      schedule[task_name] =[(d, h) for _, d, h in eligible_slots] # Partial schedule
-      for _, date, hour in eligible_slots:
-        calendar[date].remove(hour)
+    if len(eligible_slots) < hours_needed:
+      # schedule[task_name] =[(d, h) for _, d, h in eligible_slots] # Partial schedule
+      for _, date_str, hour in eligible_slots:
+        schedule[task].append((date_str, hour))
       continue
 
     grouped_slots = defaultdict(list)
@@ -49,11 +56,13 @@ def rule_based_scheduler(availibility, tasks):
     
     assigned = 0 # Assigned hours to the task
 
-    while assigned < time_needed:
-      for date in sorted(grouped_slots.keys()):
-        if grouped_slots[date] and assigned < time_needed:
+    while assigned < hours_needed:
+      for date in sorted(grouped_slots):
+        if assigned >= hours_needed:
+          break
+        if grouped_slots[date]:
           slot_dt, hour = grouped_slots[date].pop(0)
-          schedule[task_name].append((date, hour))
+          schedule[task].append((date, hour))
           calendar[date].remove(hour)
           assigned += 1
   

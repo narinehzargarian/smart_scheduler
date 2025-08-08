@@ -1,4 +1,5 @@
 from django.utils import timezone
+from datetime import timedelta
 from rest_framework import serializers
 from .models import Course, Task, ScheduledTask
 from django.db.models import Q
@@ -82,10 +83,10 @@ class TaskSerializer(serializers.ModelSerializer):
     allow_null=False,
     input_formats=[
       # '%Y-%m-%d', # Date only
-      # '%Y-%m-%dT%H:%M', # e.g. "2025-06-17T14:30"
-      # '%Y-%m-%d %H:%M', # e.g. "2025-06-17 14:30"
       # '%Y-%m-%dT%I:%M %p', # e.g "2025-06-17T2:30 PM"
 
+      '%Y-%m-%d %H:%M', # e.g. "2025-06-17 14:30"
+      '%Y-%m-%dT%H:%M', # e.g. "2025-06-17T14:30"
       '%Y-%m-%d %I:%M %p',  # e.g. "2025-06-17 2:30 PM"
     ],
     help_text='Format: YYYY-MM-DD HH:MM AM/PM (e.g. "2025-08-19 5:00 PM")'
@@ -124,3 +125,25 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
       'completed'
     ]
     read_only_fields = ['assigend_by']
+
+  # def update(self, instance, validated_data):
+  #   was_completed = instance.completed # Old completion state
+
+  #   instance = super().update(instance, validated_data)
+  #   block_duration = instance.end_datetime - instance.start_datetime
+  #   task = instance.task
+
+  #   # from not complete to complete
+  #   if instance.completed and not was_completed:
+  #     remaining_time = task.estimated_duration - block_duration
+  #     task.estimated_duration = max(timedelta(), remaining_time)
+  #     task.save()
+    
+  #   # from complete to not complete
+  #   elif not instance.completed and was_completed:
+  #     needed_time = task.estimated_duration + block_duration
+  #     task.estimated_duration = needed_time
+  #     task.save()
+    
+  #   return instance
+
