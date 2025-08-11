@@ -52,9 +52,9 @@ class TaskViewSet(viewsets.ModelViewSet):
           task = serializer.save()
           ScheduledTask.objects.filter(
               task=task
-          ).update(assigned_by='auto')
+          ).delete()
 
-          generate_schedule(self.request.user)
+          generate_schedule(self.request.user, task_ids=[task.id])
     
     def perform_destroy(self, instance):
         owner = instance.owner
@@ -83,49 +83,68 @@ class ScheduledTaskViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
         instance = serializer.instance
 
-        # Verify the new scheduled times
-        new_start = data.get('start_datetime', instance.start_datetime)
-        new_end = data.get('end_datetime', instance.end_datetime)
+        # If the start/end time is changes
+        time_change = ('start_datetime' in data) or ('end_datetime' in data)
 
-        # Check it doesn't go past the task's due date
-        due = instance.task.due_date
-        if due and new_end > due:
-            raise ValidationError('Cannot schedule beyond the task\'s due date.')
+        if time_change:
+          # Verify the new scheduled times
+          new_start = data.get('start_datetime', instance.start_datetime)
+          new_end = data.get('end_datetime', instance.end_datetime)
 
-        # Schedules should not conflict
-        conflicts = ScheduledTask.objects.filter(
-            task__owner=self.request.user,
-            start_datetime__lt=new_end,
-            end_datetime__gt=new_start, 
-        ).exclude(pk=instance.pk) # Ignore the update
-        if conflicts.exists():
-            raise ValidationError("This time slot conflicts with another scheduled task.")
+          # Check it doesn't go past the task's due date
+          due = instance.task.due_date
+          if due and new_end > due:
+              raise ValidationError('Cannot schedule beyond the task\'s due date.')
 
-        # Ensure it does not conflict with any courses on that day
-        weekday = new_start.weekday()
-        courses = Course.objects.filter(
-            owner=self.request.user,
-            start_date__lte=new_start.date(),
-            end_date__gte=new_start.date(),
-            days_of_week__contains=[weekday]
-        )
-        for course in courses:
-            if (new_start.time() < course.end_time and
-                new_end.time() > course.start_time):
-                raise ValidationError(f'There is a conflict between {course.name} class and updated schedule.')
-        
+          # Schedules should not conflict
+          conflicts = ScheduledTask.objects.filter(
+              task__owner=self.request.user,
+              start_datetime__lt=new_end,
+              end_datetime__gt=new_start, 
+          ).exclude(pk=instance.pk) # Ignore the update
+          if conflicts.exists():
+              raise ValidationError("This time slot conflicts with another scheduled task.")
+
+          # Ensure it does not conflict with any courses on that day
+          weekday = new_start.weekday()
+          courses = Course.objects.filter(
+              owner=self.request.user,
+              start_date__lte=new_start.date(),
+              end_date__gte=new_start.date(),
+              days_of_week__contains=[weekday]
+          )
+          for course in courses:
+              if (new_start.time() < course.end_time and
+                  new_end.time() > course.start_time):
+                  raise ValidationError(f'There is a conflict between {course.name} class and updated schedule.')
 
         # Save the updated as 'user'
         with transaction.atomic():
           serializer.save(assigned_by='user')
           task = instance.task
           # Mark all the schedules for the same task as 'user'
-          ScheduledTask.objects.filter(task=task).exclude(assigned_by='user').update(assigned_by='user')
+          # ScheduledTask.objects.filter(task=task).exclude(assigned_by='user').update(assigned_by='user')
+
+          ScheduledTask.objects.select_for_update().filter(task=task).exists()
 
           # Delete the task if all the slots are completed
           any_incomplete = ScheduledTask.objects.filter(task=task, completed=False).exists()
           if not any_incomplete:
+            self.task_deleted_id = task.id
             task.delete()
+
+    def update(self, request, *args, **kwargs):
+      response = super().update(request, *args, **kwargs)
+      task_deleted_id = getattr(self, 'task_deleted_id', None)
+      if task_deleted_id is not None:
+          try:
+              data = dict(response.data)
+          except Exception:
+              data = response.data
+          data['taskDeleted'] = task_deleted_id
+          return Response(data, status=status.HTTP_200_OK)
+      return response
+
     
 
 @api_view(['POST'])

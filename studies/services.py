@@ -8,30 +8,28 @@ from .models import Task, ScheduledTask
 
 # pt = pytz.timezone('America/Los_Angeles')
 
-def generate_schedule(user):
+def generate_schedule(user, task_ids=None):
   print('Generate schedule has been called!')
+  tasks = Task.objects.filter(owner=user, due_date__isnull=False)
+  if task_ids:
+    tasks = tasks.filter(id__in=task_ids)
+  else:
+      tasks = tasks.annotate(has_user_schedule=Exists(
+        ScheduledTask.objects.filter(task=OuterRef('pk'), assigned_by='user')
+      )).filter(has_user_schedule=False)
+
+  tasks = tasks.order_by('due_date')
+
+  if not tasks.exists():
+    return
+  
   ScheduledTask.objects.filter(
-    task__owner=user,
+    task__in=tasks,
     assigned_by='auto'
   ).delete()
   availability = get_availability(user)
   
   # Get the tasks with no user assigned schedule
-  tasks = (
-    Task.objects
-    .filter(owner=user, due_date__isnull=False)
-    .annotate(has_user_schedule=Exists(
-      ScheduledTask.objects.filter(
-        task=OuterRef('pk'),
-        assigned_by='user'
-      )
-    ))
-    .filter(has_user_schedule=False)
-    .order_by('due_date')
-  
-  )
-    
-
   # # Convert to list of dicts
   # tasks = [{
   #   'name': t.name,

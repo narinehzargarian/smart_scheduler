@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework import status, permissions, generics
 from .serializers import RegisterSerializer
 from .serializers import RegisterSerializer
@@ -100,6 +101,18 @@ class LogoutView(APIView):
     resp = Response(status=status.HTTP_204_NO_CONTENT)
     resp.delete_cookie('refresh_token')
     return resp
+
+class CookieTokenRefreshView(TokenRefreshView):
+   # POST /auth/token/refresh
+   def post(self, request, *args, **kwargs):
+      refresh = request.COOKIES.get('refresh_token')
+      if not refresh:
+         return Response({'detail' : 'No refresh token'}, status=400)
+      
+      serializer = self.get_serializer(data={'refresh': refresh})
+      serializer.is_valid(raise_exception=True)
+      data = serializer.validated_data
+      return Response({'access': data['access']})
 
 class UserDeleteView(APIView):
    permission_classes = [permissions.IsAuthenticated]

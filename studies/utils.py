@@ -37,7 +37,7 @@ def get_availability(user, daily_start=10, daily_end=21):
 
     # Start hour
     if day == today:
-      start_hour = max(daily_start, now.hour)
+      start_hour = max(daily_start, now.hour + 1)
     else:
       start_hour = daily_start
 
@@ -71,7 +71,7 @@ def get_availability(user, daily_start=10, daily_end=21):
     # Block user-edited schedule hours 
     user_slots = ScheduledTask.objects.filter(
       task__owner = user,
-      assigned_by='user',
+      # assigned_by='user',
       start_datetime__gte=start_of_day,
       start_datetime__lte=end_of_day
     ).values_list('start_datetime', flat=True)
