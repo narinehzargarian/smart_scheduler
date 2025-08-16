@@ -61,6 +61,11 @@ class CourseSerializer(serializers.ModelSerializer):
         'end_date': 'End date must be on or after start date.'
       })
 
+    if start_date and start_date < timezone.localdate(): # start date is before today
+      raise serializers.ValidationError({
+        'start_date': 'Start date cannot be in the past.'
+      })
+
     return attrs
     
   
